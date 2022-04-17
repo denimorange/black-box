@@ -1,0 +1,35 @@
+while getopts "i:o:s:t:ch" opt
+do
+    case "${opt}" in
+        i) INPUT=${OPTARG};;
+        o) OUTPUT=${OPTARG};;
+        s) SCHEMA=${OPTARG};;
+        t) TABLE=${OPTARG};;
+        c) echo "No column management yet";;
+        h) echo "No help yet";;
+    esac
+done
+
+if [ $OPTIND -eq 1 ]; then echo "No options were passed."; exit 1; fi
+if [ -z "$INPUT" ]; then echo "No input was provided."; exit 1; fi
+if [ -z "$OUTPUT" ]; then echo "No output was provided."; exit 1; fi
+if [ -z "$SCHEMA" ]; then echo "No schema was provided."; exit 1; fi
+if [ -z "$TABLE" ]; then echo "No table was provided."; exit 1; fi
+
+if [[ !("$INPUT" ==  *".csv") ]]
+then
+    echo "Input file is not .csv"
+    exit 1;
+fi
+
+sed 's/\s*,*\s*$//g' "$INPUT" > "tmp$$.csv"
+COLUMNS=$(head --lines=1 "tmp$$.csv" | sed 's/,/`,`/g' | tr -d "\r\n")
+COLUMNS=" \`$COLUMNS\`"
+echo "Converting..."
+echo "USE $SCHEMA;" >> "$OUTPUT"
+tail --lines=+2 "tmp$$.csv" | while read l ; do
+VALUES=$(echo $l | sed 's/,/\",\"/g' | tr -d "\r\n")
+VALUES="\"$VALUES\""
+echo "INSERT INTO $TABLE($COLUMNS) VALUES ($VALUES);"
+done >> "$OUTPUT"
+rm "tmp$$.csv"
